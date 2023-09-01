@@ -1,7 +1,6 @@
-#include "overload.hpp"
-#include <variant>
-
 #pragma once
+
+#include <variant>
 
 class King {};
 class Dragon {};
@@ -20,20 +19,8 @@ private:
 
 using Card = std::variant<King, Dragon, Wand, Knight, Potion, Number>;
 
-template <typename T>
-static auto isType = [](const Card &c) { return std::holds_alternative<T>(c); };
+template <typename T> bool isType(const Card &c) {
+  return std::holds_alternative<T>(c);
+}
 
-static auto printCardVisitor =
-    Overload{[](King c) { return 'K'; },
-             [](Dragon c) { return 'd'; },
-             [](Wand c) { return 'w'; },
-             [](Knight c) { return 'k'; },
-             [](Potion c) { return 'p'; },
-             [](Number c) -> char {
-               return c.getValue() == 10 ? 'A' : '0' + c.getValue();
-             },
-             [](auto c) { return "?"; }
-
-    };
-
-auto printCard = [](const Card &c) { return std::visit(printCardVisitor, c); };
+char printCard(const Card &c);
