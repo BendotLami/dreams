@@ -1,5 +1,5 @@
-#include "Game.hpp"
-#include "IOhandler.hpp"
+#include "./src/Game.hpp"
+#include "./src/IOhandler.hpp"
 #include <boost/asio/awaitable.hpp>
 #include <boost/asio/co_spawn.hpp>
 #include <boost/asio/detached.hpp>
