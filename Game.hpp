@@ -18,7 +18,8 @@
 #include <variant>
 #include <vector>
 
-auto readInput = [](std::string msg, std::function<bool(int)> predicate) {
+static auto readInput = [](std::string msg,
+                           std::function<bool(int)> predicate) {
   auto validateInput = [&predicate](const std::string &input) {
     if (input.size() != 1)
       return false;
@@ -279,16 +280,16 @@ private:
   std::vector<std::pair<Queen, bool>> queens;
 };
 
-int main() {
-  // asdf
-  Game g(3);
-  int i = 0;
-  while (true) {
-    g.printPlayers();
-    g.PlayTurn(i);
-    i = (i + 1) % 3;
-  }
-  g.printPlayers();
+// int main() {
+//   // asdf
+//   Game g(3);
+//   int i = 0;
+//   while (true) {
+//     g.printPlayers();
+//     g.PlayTurn(i);
+//     i = (i + 1) % 3;
+//   }
+//   g.printPlayers();
 
-  return 0;
-}
+//   return 0;
+// }

@@ -22,21 +22,6 @@ using boost::asio::redirect_error;
 using boost::asio::use_awaitable;
 using boost::asio::ip::tcp;
 
-// awaitable<void> reader() {
-//   try {
-//     for (std::string read_msg;;) {
-//       std::size_t n = co_await boost::asio::async_read_until(
-//           socket_, boost::asio::dynamic_buffer(read_msg, 1024), "\n",
-//           use_awaitable);
-
-//       room_.deliver(read_msg.substr(0, n));
-//       read_msg.erase(0, n);
-//     }
-//   } catch (std::exception &) {
-//     stop();
-//   }
-// }
-
 static std::deque<std::string> write_msg_;
 
 awaitable<void> writer(tcp::socket &sock, boost::asio::steady_timer &timer) {
@@ -74,9 +59,7 @@ awaitable<void> read_cin(std::deque<std::string> &q,
   try {
     for (;;) {
       std::string tmp;
-      // std::cin >> tmp;
       std::getline(std::cin, tmp);
-      // std::cout << "read: " << tmp << std::endl;
       tmp.push_back('\n');
       q.push_back(tmp);
       timer.cancel_one();
@@ -87,8 +70,6 @@ awaitable<void> read_cin(std::deque<std::string> &q,
   return awaitable<void>();
 }
 
-std::shared_ptr<tcp::socket> sock;
-
 int main(int argc, char *argv[]) {
   try {
     if (argc < 2) {
@@ -96,33 +77,30 @@ int main(int argc, char *argv[]) {
       return 1;
     }
     unsigned short port = std::atoi(argv[1]);
+
     boost::asio::io_context context(1);
+
     boost::asio::steady_timer timer(context);
     timer.expires_at(std::chrono::steady_clock::time_point::max());
 
-    sock = std::make_shared<tcp::socket>(tcp::socket(context));
-    sock->connect(
+    auto sock = tcp::socket(context);
+    sock.connect(
         tcp::endpoint(boost::asio::ip::make_address("127.0.0.1"), port));
-    if (!sock->is_open())
-      std::cout << "func this sheet" << std::endl;
 
     boost::asio::signal_set signals(context, SIGINT, SIGTERM);
     signals.async_wait([&](auto, auto) {
-      std::cout << "closing" << std::endl;
-      sock->close();
+      sock.close();
       context.stop();
     });
 
     co_spawn(
-        context, [] { return reader(*sock); }, detached);
+        context, [&sock] { return reader(sock); }, detached);
 
     co_spawn(
-        context, [&timer] { return writer(*sock, timer); }, detached);
+        context, [&timer, &sock] { return writer(sock, timer); }, detached);
 
     std::thread thread(read_cin, std::ref(write_msg_), std::ref(timer));
     thread.detach();
-
-    // boost::asio::post(context, [&sock]() { sock.close(); });
 
     context.run();
   } catch (std::exception &e) {
