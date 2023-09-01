@@ -53,19 +53,24 @@ std::string Game::playersString() {
   return ss.str();
 }
 void Game::printPlayers() { io_handler.write_all(playersString()); }
-std::string Game::queensString() {
+
+std::string Game::queensString(bool debug) {
   std::string msg;
   int i = 0;
-  for_each(queens.begin(), queens.end(), [&msg, &i](std::pair<Queen, bool> a) {
-    msg.append(std::to_string(i++));
-    msg.append(": ");
-    msg.append(a.second ? a.first.toString() : "_");
-    msg.push_back(' ');
-  });
+  for_each(queens.begin(), queens.end(),
+           [&msg, &i, debug](std::pair<Queen, bool> a) {
+             std::string queenRepr =
+                 a.second ? (debug ? a.first.toString() : "Q") : "_";
+             msg.append(std::to_string(i++));
+             msg.append(": ");
+             msg.append(queenRepr);
+             msg.push_back(' ');
+           });
   msg.pop_back();
 
   return msg;
 }
+
 bool Game::handleDragon(int attackedIdx) {
   auto &player = players[attackedIdx];
   int dragonIdx = player.find<Dragon>();
@@ -148,7 +153,7 @@ awaitable<bool> Game::playKing(int currentPlayer) {
   };
 
   msg << "Hidden Queens:\n";
-  msg << queensString();
+  msg << queensString(false);
   msg << "\n"
       << "Insert chosen queen: \n";
 
@@ -157,6 +162,11 @@ awaitable<bool> Game::playKing(int currentPlayer) {
   if (!wokenQueen.has_value())
     throw std::exception();
   players[currentPlayer].addQueen(wokenQueen.value());
+
+  if (wokenQueen->getType() == Queen::Type::Roses) {
+    std::cout << "Roses played" << std::endl;
+    static_cast<void>(co_await playKing(currentPlayer));
+  }
 
   co_return true;
 }

@@ -24,3 +24,5 @@ std::vector<Queen> QueenFactory::getQueens() {
     q.emplace_back(10, Queen::Type::Regular);
   return q;
 }
+
+Queen::Type Queen::getType() { return type; };

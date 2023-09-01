@@ -26,7 +26,7 @@ private:
 
   void printPlayers();
 
-  std::string queensString();
+  std::string queensString(bool debug);
 
   bool handleDragon(int attackedIdx);
 

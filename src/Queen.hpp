@@ -16,6 +16,8 @@ public:
 
   std::string toString() const;
 
+  Type getType();
+
 private:
   int points;
   Type type;
