@@ -3,6 +3,7 @@
 #include <boost/asio/awaitable.hpp>
 #include <boost/asio/co_spawn.hpp>
 #include <boost/asio/detached.hpp>
+#include <boost/asio/error.hpp>
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/signal_set.hpp>
@@ -17,9 +18,9 @@ using boost::asio::ip::tcp;
 
 // IOSocketHandler io_socket;
 
-awaitable<void> playGame(IOSocketHandler &io_handler) {
-  co_await io_handler.await_num_of_players(2);
-  Game g(2, io_handler);
+awaitable<void> playGame(IOSocketHandler &io_handler, int num_players) {
+  co_await io_handler.await_num_of_players(num_players);
+  Game g(num_players, io_handler);
   int i = 0;
   while (true) {
     std::cout << "oh its on" << std::endl;
@@ -29,11 +30,14 @@ awaitable<void> playGame(IOSocketHandler &io_handler) {
 }
 
 int main(int argc, char *argv[]) {
-  if (argc != 2) {
-    std::cerr << "Usage: dreams_server <port>\n";
+  if (argc != 2 && argc != 3) {
+    std::cerr << "Usage: dreams_server <port> (<num of players>)\n";
     return 1;
   }
   unsigned short port = std::atoi(argv[1]);
+  unsigned short num_players = 2;
+  if (argc > 2)
+    num_players = std::atoi(argv[2]);
 
   std::cout << "starting" << std::endl;
 
@@ -45,20 +49,17 @@ int main(int argc, char *argv[]) {
       io_socket.acceptNewUsers(tcp::acceptor(io_context, {tcp::v4(), port})),
       detached);
 
-  co_spawn(io_context, playGame(io_socket), detached);
+  co_spawn(io_context, playGame(io_socket, num_players), detached);
 
   boost::asio::signal_set signals(io_context, SIGINT, SIGTERM);
   signals.async_wait([&](auto, auto) { io_context.stop(); });
 
-  io_context.run();
-
-  // IOStreamHandler ios;
-  // Game g(3, ios);
-  // int i = 0;
-  // while (true) {
-  //   g.PlayTurn(i);
-  //   i = (i + 1) % 3;
-  // }
+  try {
+    io_context.run();
+  } catch (boost::asio::error::basic_errors &e) {
+    std::cout << "closing" << std::endl;
+    io_socket.stop();
+  }
 
   return 0;
 }

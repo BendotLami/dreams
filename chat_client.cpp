@@ -96,15 +96,24 @@ int main(int argc, char *argv[]) {
     });
 
     co_spawn(
-        context, [&sock] { return reader(sock); }, detached);
+        context, [&sock] { return reader(sock); },
+        [](std::exception_ptr e) {
+          throw boost::asio::error::basic_errors::connection_aborted;
+        });
 
     co_spawn(
-        context, [&timer, &sock] { return writer(sock, timer); }, detached);
+        context, [&timer, &sock] { return writer(sock, timer); },
+        [](std::exception_ptr e) {
+          throw boost::asio::error::basic_errors::connection_aborted;
+        });
+    ;
 
     std::thread thread(read_cin, std::ref(write_msg_), std::ref(timer));
     thread.detach();
 
     context.run();
+  } catch (boost::asio::error::basic_errors &e) {
+    std::cout << "Server closed" << std::endl;
   } catch (std::exception &e) {
     std::cerr << "Exception: " << e.what() << "\n";
   }
