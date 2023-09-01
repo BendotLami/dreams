@@ -1,6 +1,8 @@
 #include <boost/asio/awaitable.hpp>
 #include <boost/asio/co_spawn.hpp>
 #include <boost/asio/detached.hpp>
+#include <boost/asio/detail/throw_error.hpp>
+#include <boost/asio/error.hpp>
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/read_until.hpp>
@@ -8,6 +10,8 @@
 #include <boost/asio/steady_timer.hpp>
 #include <boost/asio/use_awaitable.hpp>
 #include <boost/asio/write.hpp>
+#include <boost/system/detail/errc.hpp>
+#include <boost/system/system_error.hpp>
 #include <chrono>
 #include <condition_variable>
 #include <deque>
@@ -62,12 +66,16 @@ public:
     co_spawn(
         socket.get_executor(),
         [self = shared_from_this()] { return self->read_from_socket(); },
-        detached);
+        [](std::exception_ptr e) {
+          throw boost::asio::error::basic_errors::connection_aborted;
+        });
 
     co_spawn(
         socket.get_executor(),
         [self = shared_from_this()] { return self->write_to_socket(); },
-        detached);
+        [](std::exception_ptr e) {
+          throw boost::asio::error::basic_errors::connection_aborted;
+        });
   }
 
   auto &get_socket() { return socket; }
@@ -99,7 +107,8 @@ public:
         timer_read.cancel_one();
         read_msg.erase(0, n);
       }
-    } catch (std::exception &) {
+    } catch (std::exception &c) {
+      throw c;
     }
   }
 
@@ -120,20 +129,21 @@ public:
           write_msg_.pop_front();
         }
       }
-    } catch (std::exception &) {
+    } catch (std::exception &c) {
+      throw c;
     }
   }
 
-  // awaitable<void> write_to_socket()
+  void stop() {
+    if (socket.is_open())
+      socket.close();
+  }
 
   tcp::socket socket;
   std::optional<std::string> lastVal;
   boost::asio::steady_timer timer_read;
   std::deque<std::string> write_msg_;
   boost::asio::steady_timer timer_write;
-
-  std::mutex m_mtx;
-  std::condition_variable m_cv;
 };
 
 class IOSocketHandler : public IOHandler {
@@ -143,39 +153,38 @@ public:
     new_player_timer.expires_at(std::chrono::steady_clock::time_point::max());
   };
 
-  awaitable<void> acceptNewUsers(tcp::acceptor acceptor) {
+  awaitable<void> acceptNewUsers(tcp::acceptor act) {
+    try {
+      acceptor.emplace(std::move(act));
+      tcp::acceptor &acptPtr = *acceptor;
+      for (;;) {
+        players.emplace_back(std::make_shared<PlayerSocket>(
+            co_await acptPtr.async_accept(use_awaitable)));
 
-    for (;;) {
-      players.emplace_back(std::make_shared<PlayerSocket>(
-          co_await acceptor.async_accept(use_awaitable)));
+        auto &newPlayer = players.back();
+        newPlayer->start(); // after constructor to get first shared_ptr
 
-      auto &newPlayer = players.back();
-      newPlayer->start(); // after constructor to get first shared_ptr
-
-      new_player_timer.cancel();
+        new_player_timer.cancel();
+      }
+    } catch (boost::system::system_error &e) {
+      if (e.code() == boost::asio::error::operation_aborted)
+        ;
+      else
+        throw e;
+    } catch (std::exception &e) {
+      throw e;
     }
   }
-
-  awaitable<void> reader(tcp::socket &sock, std::optional<std::string> &dest) {
-    try {
-      for (std::string read_msg;;) {
-        std::size_t n = co_await boost::asio::async_read_until(
-            sock, boost::asio::dynamic_buffer(read_msg, 1024), "\n",
-            use_awaitable);
-
-        dest = read_msg;
-
-        std::cout << read_msg << std::endl;
-        read_msg.erase(0, n);
-      }
-    } catch (std::exception &) {
-    }
-  };
 
   awaitable<void> await_num_of_players(int count) {
     while (players.size() < count) {
       boost::system::error_code ec;
       co_await new_player_timer.async_wait(redirect_error(use_awaitable, ec));
+    }
+
+    if (acceptor.has_value()) {
+      acceptor->close();
+      acceptor.reset();
     }
   }
 
@@ -186,7 +195,6 @@ public:
   }
 
   virtual void write(int player, std::string str) {
-    // std::cout << "writing to player " << player << ": " << str << std::endl;
     players[player]->write(str);
   }
   virtual void write_all(std::string str) {
@@ -194,8 +202,13 @@ public:
       p->write(str);
   }
 
+  void stop() {
+    for (auto &p : players) {
+      p->stop();
+    }
+  }
+
   std::vector<std::shared_ptr<PlayerSocket>> players;
   boost::asio::steady_timer new_player_timer;
-
-  // std::vector<std::optional<std::string>> lastVal;
+  std::optional<tcp::acceptor> acceptor;
 };
