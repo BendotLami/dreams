@@ -96,6 +96,18 @@ public:
     return os;
   }
 
+  template <typename T> int find() {
+    auto it = cards.begin();
+    int i = 0;
+    while (it != cards.end()) {
+      if (std::holds_alternative<T>(*it))
+        return i;
+      it++;
+      i++;
+    }
+    return -1;
+  };
+
 private:
   std::list<Queen> queens;
   std::list<Card> cards;
