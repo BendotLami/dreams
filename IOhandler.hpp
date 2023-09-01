@@ -28,17 +28,17 @@ using boost::asio::ip::tcp;
 
 class IOHandler {
 public:
-  virtual std::string read(int player) = 0;
+  virtual awaitable<std::string> read(int player) = 0;
   virtual void write(int player, std::string str) = 0;
   virtual void write_all(std::string str) = 0;
 };
 
 class IOStreamHandler : public IOHandler {
 public:
-  virtual std::string read(int player) {
+  virtual awaitable<std::string> read(int player) {
     std::string tmp;
     std::cin >> tmp;
-    return tmp;
+    co_return tmp;
   }
   virtual void write(int player, std::string str) { std::cout << str; }
   virtual void write_all(std::string str) { std::cout << str; }
@@ -49,7 +49,6 @@ public:
   PlayerSocket(tcp::socket s) : socket(std::move(s)), timer_(s.get_executor()) {
     std::cout << "new user!" << std::endl;
     lastVal = {};
-    timer_.expires_at(std::chrono::steady_clock::time_point::max());
   }
 
   void start() {
@@ -145,10 +144,10 @@ public:
     }
   }
 
-  virtual std::string read(int player) {
+  virtual awaitable<std::string> read(int player) {
     // this is impossible, need to thread
-    auto a = players[player]->read();
-    return a.await_resume();
+    auto a = co_await players[player]->read();
+    co_return a;
   }
 
   virtual void write(int player, std::string str) { std::cout << str; }

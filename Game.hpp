@@ -29,9 +29,10 @@ class Game {
     }
   }
 
-  char readInput(std::string msg, std::function<bool(int)> predicate) {
+  awaitable<char> readInput(int playerIdx, std::string msg,
+                            std::function<bool(int)> predicate) {
     auto validateInput = [&predicate](const std::string &input) {
-      if (input.size() != 1)
+      if (input.size() != 1 && input.size() != 2)
         return false;
       unsigned char inputIdx = input[0] - '0';
       return predicate(inputIdx);
@@ -39,10 +40,10 @@ class Game {
 
     std::string input;
     do {
-      io_handler.write(0, msg);
-      input = io_handler.read(0);
+      input = co_await io_handler.read(playerIdx);
+      io_handler.write(playerIdx, msg);
     } while (!validateInput(input));
-    return input[0] - '0';
+    co_return input[0] - '0';
   }
 
 public:
@@ -114,21 +115,22 @@ private:
     return true;
   }
 
-  bool playKnight(int currentPlayer) {
+  awaitable<bool> playKnight(int currentPlayer) {
     std::stringstream msg;
 
     if (!anyPlayerHasQueens()) {
       io_handler.write(currentPlayer, "No player have any queens.\n");
-      return false;
+      co_return false;
     }
 
     bool hasQueens = false;
     int attackPlayerIdx;
     while (!hasQueens) {
       msg << "Insert which player you want to attack: ";
-      attackPlayerIdx = readInput(msg.str(), [this, currentPlayer](int i) {
-        return i >= 0 && i < players.size() && i != currentPlayer;
-      });
+      attackPlayerIdx = co_await readInput(
+          currentPlayer, msg.str(), [this, currentPlayer](int i) {
+            return i >= 0 && i < players.size() && i != currentPlayer;
+          });
       hasQueens = players[attackPlayerIdx].getQueenCount() > 0;
       if (!hasQueens)
         io_handler.write(currentPlayer, "Player does not have queens.");
@@ -137,23 +139,24 @@ private:
     msg.str(std::string());
     msg << players[attackPlayerIdx].printQueens() << '\n';
     msg << "Pick which queen you want to steal: ";
-    int queenIdx = readInput(msg.str(), [this, attackPlayerIdx](int i) {
-      return i >= 0 && i < players[attackPlayerIdx].getQueenCount();
-    });
+    int queenIdx = co_await readInput(
+        currentPlayer, msg.str(), [this, attackPlayerIdx](int i) {
+          return i >= 0 && i < players[attackPlayerIdx].getQueenCount();
+        });
 
     if (handleDragon(attackPlayerIdx)) { // maybe later will wait for result of
                                          // other player
       // poor baby, took your knight
-      return true;
+      co_return true;
     }
 
     players[currentPlayer].addQueen(
         players[attackPlayerIdx].removeQueen(queenIdx));
 
-    return true;
+    co_return true;
   }
 
-  bool playKing(int currentPlayer) {
+  awaitable<bool> playKing(int currentPlayer) {
     std::stringstream msg;
 
     std::vector<int> range;
@@ -164,7 +167,7 @@ private:
     if (range.size() == 0) {
       // std::cout << "No hidden queens available" << std::endl;
       io_handler.write(currentPlayer, "No hidden queens available");
-      return false;
+      co_return false;
     }
 
     auto isQueenIdxValid = [&range](int i) {
@@ -179,30 +182,31 @@ private:
     msg << "\n"
         << "Insert chosen queen: ";
 
-    int input = readInput(msg.str(), isQueenIdxValid);
+    int input = co_await readInput(currentPlayer, msg.str(), isQueenIdxValid);
     auto wokenQueen = wakeQueen(input);
     if (!wokenQueen.has_value())
       throw std::exception();
     players[currentPlayer].addQueen(wokenQueen.value());
 
-    return true;
+    co_return true;
   }
 
-  bool playPotion(int currentPlayer) {
+  awaitable<bool> playPotion(int currentPlayer) {
     std::stringstream msg;
 
     if (!anyPlayerHasQueens()) {
       io_handler.write(currentPlayer, "No player have any queens.");
-      return false;
+      co_return false;
     }
 
     bool hasQueens = false;
     int attackPlayerIdx;
     while (!hasQueens) {
       msg << "Insert which player you want to attack: ";
-      attackPlayerIdx = readInput(msg.str(), [this, currentPlayer](int i) {
-        return i >= 0 && i < players.size() && i != currentPlayer;
-      });
+      attackPlayerIdx = co_await readInput(
+          currentPlayer, msg.str(), [this, currentPlayer](int i) {
+            return i >= 0 && i < players.size() && i != currentPlayer;
+          });
       hasQueens = players[attackPlayerIdx].getQueenCount() > 0;
       if (!hasQueens)
         io_handler.write(currentPlayer, "Player does not have queens.");
@@ -211,23 +215,24 @@ private:
     msg.str(std::string());
     msg << players[attackPlayerIdx].printQueens() << '\n';
     msg << "Pick which queen you want to poison: ";
-    int queenIdx = readInput(msg.str(), [this, attackPlayerIdx](int i) {
-      return i >= 0 && i < players[attackPlayerIdx].getQueenCount();
-    });
+    int queenIdx = co_await readInput(
+        currentPlayer, msg.str(), [this, attackPlayerIdx](int i) {
+          return i >= 0 && i < players[attackPlayerIdx].getQueenCount();
+        });
 
     if (handleWand(attackPlayerIdx)) { // maybe later will wait for result of
                                        // other player
       // poor baby, the princess is awake
-      return true;
+      co_return true;
     }
 
     sleepyQueen(players[attackPlayerIdx].removeQueen(queenIdx));
 
-    return true;
+    co_return true;
   }
 
 public:
-  void PlayTurn(int playerIdx) {
+  awaitable<void> PlayTurn(int playerIdx) {
     // TODO: DEBUG ONLY:
     this->printPlayers();
     // END TODO
@@ -242,8 +247,9 @@ public:
     int cardIdx;
 
     while (!res) {
-      int cardIdx = readInput(
-          msg.str(), [this](int i) { return i >= 0 && i < CardsPerPlayer; });
+      int cardIdx = co_await readInput(playerIdx, msg.str(), [this](int i) {
+        return i >= 0 && i < CardsPerPlayer;
+      });
 
       // Card playedCard = player.playCard(cardIdx, deck.pop_card());
       Card peekedCard = player.peekCard(cardIdx);
@@ -253,16 +259,17 @@ public:
       str.push_back('\n');
       io_handler.write(playerIdx, str);
 
-      res = std::visit(
+      res = co_await std::visit(
           Overload{
-              [](Number n) { return true; },
+              [](Number n) -> awaitable<bool> { co_return true; },
               [this, playerIdx](Knight k) { return playKnight(playerIdx); },
               [this, playerIdx](King k) { return playKing(playerIdx); },
               [this, playerIdx](Potion k) { return playPotion(playerIdx); },
-              [](Dragon _) { return false; }, [](Wand _) { return false; },
+              [](Dragon _) -> awaitable<bool> { co_return false; },
+              [](Wand _) -> awaitable<bool> { co_return false; },
               [](auto c) {
                 std::cerr << "errer: " << printCard(c) << std::endl;
-                return true;
+                return awaitable<bool>{};
               }},
           peekedCard);
     }
