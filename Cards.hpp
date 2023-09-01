@@ -23,7 +23,7 @@ using Card = std::variant<King, Dragon, Wand, Knight, Potion, Number>;
 template <typename T>
 static auto isType = [](const Card &c) { return std::holds_alternative<T>(c); };
 
-auto printCardVisitor =
+static auto printCardVisitor =
     Overload{[](King c) { return 'K'; },
              [](Dragon c) { return 'd'; },
              [](Wand c) { return 'w'; },
