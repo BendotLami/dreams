@@ -41,7 +41,8 @@ public:
     std::string s;
     s.append("Cards: ");
     auto it = cards.begin();
-    for (int i = 0; i < cards.size(); i++) {
+    int cardSize = cards.size();
+    for (int i = 0; i < cardSize; i++) {
       s.append(std::to_string(i));
       s.append(": ");
       s.push_back(printCard(*it));
