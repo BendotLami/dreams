@@ -22,8 +22,8 @@ awaitable<void> playGame(IOSocketHandler &io_handler) {
   Game g(2, io_handler);
   int i = 0;
   while (true) {
-    g.PlayTurn(i);
-    i = (i + 1) % 3;
+    co_await g.PlayTurn(i);
+    i = (i + 1) % 2;
   }
 }
 
