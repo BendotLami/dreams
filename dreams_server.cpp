@@ -8,6 +8,7 @@
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/signal_set.hpp>
 #include <boost/asio/use_awaitable.hpp>
+#include <iostream>
 #include <vector>
 
 using boost::asio::awaitable;
