@@ -13,13 +13,14 @@
 using boost::asio::awaitable;
 using boost::asio::co_spawn;
 using boost::asio::detached;
-using boost::asio::use_awaitable;
 using boost::asio::ip::tcp;
 
 // IOSocketHandler io_socket;
 
-awaitable<void> playGame(IOSocketHandler &io_handler, int num_players) {
-  co_await io_handler.await_num_of_players(num_players);
+awaitable<void> playGame(IOSocketHandler &io_handler, int num_players,
+                         unsigned short port) {
+  co_await io_handler.acceptNewUsers(
+      tcp::acceptor(io_handler.get_context(), {tcp::v4(), port}), num_players);
   Game g(num_players, io_handler);
   int i = 0;
   while (true) {
@@ -44,12 +45,7 @@ int main(int argc, char *argv[]) {
   boost::asio::io_context io_context(1);
   IOSocketHandler io_socket{io_context};
 
-  co_spawn(
-      io_context,
-      io_socket.acceptNewUsers(tcp::acceptor(io_context, {tcp::v4(), port})),
-      detached);
-
-  co_spawn(io_context, playGame(io_socket, num_players), detached);
+  co_spawn(io_context, playGame(io_socket, num_players, port), detached);
 
   boost::asio::signal_set signals(io_context, SIGINT, SIGTERM);
   signals.async_wait([&](auto, auto) { io_context.stop(); });

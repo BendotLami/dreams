@@ -247,7 +247,7 @@ public:
     int cardIdx;
 
     while (!res) {
-      int cardIdx = co_await readInput(playerIdx, msg.str(), [this](int i) {
+      cardIdx = co_await readInput(playerIdx, msg.str(), [this](int i) {
         return i >= 0 && i < CardsPerPlayer;
       });
 
@@ -274,7 +274,6 @@ public:
           peekedCard);
     }
 
-    // if (res)
     player.playCard(cardIdx, deck.pop_card());
   }
 
@@ -306,17 +305,3 @@ private:
   std::vector<std::pair<Queen, bool>> queens;
   IOHandler &io_handler;
 };
-
-// int main() {
-//   // asdf
-//   Game g(3);
-//   int i = 0;
-//   while (true) {
-//     g.printPlayers();
-//     g.PlayTurn(i);
-//     i = (i + 1) % 3;
-//   }
-//   g.printPlayers();
-
-//   return 0;
-// }

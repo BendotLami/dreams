@@ -19,7 +19,6 @@
 
 using boost::asio::awaitable;
 using boost::asio::co_spawn;
-using boost::asio::detached;
 using boost::asio::redirect_error;
 using boost::asio::use_awaitable;
 using boost::asio::ip::tcp;

@@ -78,8 +78,6 @@ public:
         });
   }
 
-  auto &get_socket() { return socket; }
-
   awaitable<std::string> read() {
     lastVal = {};
     // std::size_t n = boost::asio::read_until(
@@ -139,6 +137,7 @@ public:
       socket.close();
   }
 
+private:
   tcp::socket socket;
   std::optional<std::string> lastVal;
   boost::asio::steady_timer timer_read;
@@ -149,15 +148,15 @@ public:
 class IOSocketHandler : public IOHandler {
 public:
   IOSocketHandler(boost::asio::io_context &context)
-      : new_player_timer(context) {
+      : context(context), new_player_timer(context) {
     new_player_timer.expires_at(std::chrono::steady_clock::time_point::max());
   };
 
-  awaitable<void> acceptNewUsers(tcp::acceptor act) {
+  awaitable<void> acceptNewUsers(tcp::acceptor act, int num_players) {
     try {
       acceptor.emplace(std::move(act));
       tcp::acceptor &acptPtr = *acceptor;
-      for (;;) {
+      for (; num_players > 0; num_players--) {
         players.emplace_back(std::make_shared<PlayerSocket>(
             co_await acptPtr.async_accept(use_awaitable)));
 
@@ -166,25 +165,8 @@ public:
 
         new_player_timer.cancel();
       }
-    } catch (boost::system::system_error &e) {
-      if (e.code() == boost::asio::error::operation_aborted)
-        ;
-      else
-        throw e;
     } catch (std::exception &e) {
       throw e;
-    }
-  }
-
-  awaitable<void> await_num_of_players(int count) {
-    while (players.size() < count) {
-      boost::system::error_code ec;
-      co_await new_player_timer.async_wait(redirect_error(use_awaitable, ec));
-    }
-
-    if (acceptor.has_value()) {
-      acceptor->close();
-      acceptor.reset();
     }
   }
 
@@ -208,7 +190,11 @@ public:
     }
   }
 
+  boost::asio::io_context &get_context() { return context; }
+
+private:
   std::vector<std::shared_ptr<PlayerSocket>> players;
   boost::asio::steady_timer new_player_timer;
   std::optional<tcp::acceptor> acceptor;
+  boost::asio::io_context &context;
 };
