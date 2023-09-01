@@ -49,7 +49,7 @@ awaitable<void> reader(tcp::socket &sock) {
           sock, boost::asio::dynamic_buffer(read_msg, 1024), "\n",
           use_awaitable);
 
-      std::cout << read_msg << std::endl;
+      std::cout << read_msg.substr(0, n);
       read_msg.erase(0, n);
     }
   } catch (std::exception &) {
