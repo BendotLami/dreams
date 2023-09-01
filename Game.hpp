@@ -1,5 +1,6 @@
 #include "Cards.hpp"
 #include "Deck.hpp"
+#include "IOhandler.hpp"
 #include "Player.hpp"
 #include "Queen.hpp"
 #include "overload.hpp"
@@ -18,23 +19,6 @@
 #include <variant>
 #include <vector>
 
-static auto readInput = [](std::string msg,
-                           std::function<bool(int)> predicate) {
-  auto validateInput = [&predicate](const std::string &input) {
-    if (input.size() != 1)
-      return false;
-    unsigned char inputIdx = input[0] - '0';
-    return predicate(inputIdx);
-  };
-
-  std::string input;
-  do {
-    std::cout << msg;
-    std::cin >> input;
-  } while (!validateInput(input));
-  return input[0] - '0';
-};
-
 class Game {
   constexpr static int NumOfQueens = 12;
   constexpr static int CardsPerPlayer = 5;
@@ -45,8 +29,24 @@ class Game {
     }
   }
 
+  char readInput(std::string msg, std::function<bool(int)> predicate) {
+    auto validateInput = [&predicate](const std::string &input) {
+      if (input.size() != 1)
+        return false;
+      unsigned char inputIdx = input[0] - '0';
+      return predicate(inputIdx);
+    };
+
+    std::string input;
+    do {
+      io_handler.write(0, msg);
+      input = io_handler.read(0);
+    } while (!validateInput(input));
+    return input[0] - '0';
+  }
+
 public:
-  Game(int players) {
+  Game(int players, IOHandler &io_handler) : io_handler(io_handler) {
     initCards(players);
     std::vector<Queen> tmp = QueenFactory::getQueens();
     std::transform(tmp.begin(), tmp.end(), std::back_inserter(queens),
@@ -57,6 +57,15 @@ public:
     std::shuffle(queens.begin(), queens.end(), g);
   };
 
+  // Game(int player) : Game(player, IOStreamHandler()){};
+
+  std::string getPlayerHand(int player) {
+    if (player >= players.size())
+      return "Error: No Such Player!";
+    return players[player].toString();
+  }
+
+private:
   std::string playersString() {
     std::stringstream ss;
     for (int i = 0; i < players.size(); i++) {
@@ -66,7 +75,7 @@ public:
     return ss.str();
   }
 
-  void printPlayers() { std::cout << playersString(); }
+  void printPlayers() { io_handler.write_all(playersString()); }
 
   std::string queensString() {
     std::string msg;
@@ -109,7 +118,7 @@ public:
     std::stringstream msg;
 
     if (!anyPlayerHasQueens()) {
-      std::cout << "No player have any queens." << std::endl;
+      io_handler.write(currentPlayer, "No player have any queens.\n");
       return false;
     }
 
@@ -122,7 +131,7 @@ public:
       });
       hasQueens = players[attackPlayerIdx].getQueenCount() > 0;
       if (!hasQueens)
-        std::cout << "Player does not have queens." << std::endl;
+        io_handler.write(currentPlayer, "Player does not have queens.");
     }
 
     msg.str(std::string());
@@ -153,7 +162,8 @@ public:
         range.push_back(i);
 
     if (range.size() == 0) {
-      std::cout << "No hidden queens available" << std::endl;
+      // std::cout << "No hidden queens available" << std::endl;
+      io_handler.write(currentPlayer, "No hidden queens available");
       return false;
     }
 
@@ -182,7 +192,7 @@ public:
     std::stringstream msg;
 
     if (!anyPlayerHasQueens()) {
-      std::cout << "No player have any queens." << std::endl;
+      io_handler.write(currentPlayer, "No player have any queens.");
       return false;
     }
 
@@ -195,7 +205,7 @@ public:
       });
       hasQueens = players[attackPlayerIdx].getQueenCount() > 0;
       if (!hasQueens)
-        std::cout << "Player does not have queens." << std::endl;
+        io_handler.write(currentPlayer, "Player does not have queens.");
     }
 
     msg.str(std::string());
@@ -216,7 +226,12 @@ public:
     return true;
   }
 
+public:
   void PlayTurn(int playerIdx) {
+    // TODO: DEBUG ONLY:
+    this->printPlayers();
+    // END TODO
+
     std::stringstream msg;
     auto &player = players[playerIdx];
     msg << "Player " << playerIdx << "\n";
@@ -232,7 +247,11 @@ public:
 
       // Card playedCard = player.playCard(cardIdx, deck.pop_card());
       Card peekedCard = player.peekCard(cardIdx);
-      std::cout << printCard(peekedCard) << std::endl;
+      // std::cout << printCard(peekedCard) << std::endl;
+      std::string str;
+      str.push_back(printCard(peekedCard));
+      str.push_back('\n');
+      io_handler.write(playerIdx, str);
 
       res = std::visit(
           Overload{
@@ -242,7 +261,7 @@ public:
               [this, playerIdx](Potion k) { return playPotion(playerIdx); },
               [](Dragon _) { return false; }, [](Wand _) { return false; },
               [](auto c) {
-                std::cout << "errer: " << printCard(c) << std::endl;
+                std::cerr << "errer: " << printCard(c) << std::endl;
                 return true;
               }},
           peekedCard);
@@ -278,6 +297,7 @@ private:
   Deck deck;
   std::vector<Player> players;
   std::vector<std::pair<Queen, bool>> queens;
+  IOHandler &io_handler;
 };
 
 // int main() {
