@@ -40,8 +40,8 @@ class Game {
 
     std::string input;
     do {
-      input = co_await io_handler.read(playerIdx);
       io_handler.write(playerIdx, msg);
+      input = co_await io_handler.read(playerIdx);
     } while (!validateInput(input));
     co_return input[0] - '0';
   }
@@ -234,7 +234,7 @@ private:
 public:
   awaitable<void> PlayTurn(int playerIdx) {
     // TODO: DEBUG ONLY:
-    this->printPlayers();
+    // this->printPlayers();
     // END TODO
 
     std::stringstream msg;
