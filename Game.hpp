@@ -126,7 +126,7 @@ private:
     bool hasQueens = false;
     int attackPlayerIdx;
     while (!hasQueens) {
-      msg << "Insert which player you want to attack: ";
+      msg << "Insert which player you want to attack: \n";
       attackPlayerIdx = co_await readInput(
           currentPlayer, msg.str(), [this, currentPlayer](int i) {
             return i >= 0 && i < players.size() && i != currentPlayer;
@@ -138,7 +138,7 @@ private:
 
     msg.str(std::string());
     msg << players[attackPlayerIdx].printQueens() << '\n';
-    msg << "Pick which queen you want to steal: ";
+    msg << "Pick which queen you want to steal: \n";
     int queenIdx = co_await readInput(
         currentPlayer, msg.str(), [this, attackPlayerIdx](int i) {
           return i >= 0 && i < players[attackPlayerIdx].getQueenCount();
@@ -180,7 +180,7 @@ private:
     msg << "Hidden Queens:\n";
     msg << queensString();
     msg << "\n"
-        << "Insert chosen queen: ";
+        << "Insert chosen queen: \n";
 
     int input = co_await readInput(currentPlayer, msg.str(), isQueenIdxValid);
     auto wokenQueen = wakeQueen(input);
@@ -202,7 +202,7 @@ private:
     bool hasQueens = false;
     int attackPlayerIdx;
     while (!hasQueens) {
-      msg << "Insert which player you want to attack: ";
+      msg << "Insert which player you want to attack: \n";
       attackPlayerIdx = co_await readInput(
           currentPlayer, msg.str(), [this, currentPlayer](int i) {
             return i >= 0 && i < players.size() && i != currentPlayer;
@@ -214,7 +214,7 @@ private:
 
     msg.str(std::string());
     msg << players[attackPlayerIdx].printQueens() << '\n';
-    msg << "Pick which queen you want to poison: ";
+    msg << "Pick which queen you want to poison: \n";
     int queenIdx = co_await readInput(
         currentPlayer, msg.str(), [this, attackPlayerIdx](int i) {
           return i >= 0 && i < players[attackPlayerIdx].getQueenCount();
@@ -241,7 +241,7 @@ public:
     auto &player = players[playerIdx];
     msg << "Player " << playerIdx << "\n";
     msg << player;
-    msg << "Insert which card you want to play: ";
+    msg << "Insert which card you want to play: \n";
 
     bool res = false;
     int cardIdx;
