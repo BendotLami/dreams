@@ -4,6 +4,7 @@
 #include "IOhandler.hpp"
 #include "Player.hpp"
 #include "Queen.hpp"
+#include "Turn.hpp"
 
 class Game {
   constexpr static int NumOfQueens = 12;
@@ -28,23 +29,26 @@ private:
 
   std::string queensString(bool debug);
 
-  bool handleDragon(int attackedIdx);
+  std::optional<int> handleDragon(int attackedIdx);
 
-  bool handleWand(int attackedIdx);
+  std::optional<int> handleWand(int attackedIdx);
 
-  awaitable<bool> playKnight(int currentPlayer);
+  awaitable<Turn> playKnight(int currentPlayer);
 
-  awaitable<bool> playKing(int currentPlayer);
+  awaitable<Turn> playKing(int currentPlayer);
 
-  awaitable<bool> playPotion(int currentPlayer);
+  awaitable<Turn> playPotion(int currentPlayer);
 
 public:
   awaitable<void> PlayTurn(int playerIdx);
 
 private:
+  bool commitTurn(const Turn &turn);
   bool anyPlayerHasQueens();
 
   std::optional<Queen> wakeQueen(int idx);
+
+  std::optional<Queen> peekQueen(int idx);
 
   void sleepyQueen(Queen q);
 

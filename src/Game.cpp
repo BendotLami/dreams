@@ -1,5 +1,7 @@
 #include "Game.hpp"
 #include "Cards.hpp"
+#include "Queen.hpp"
+#include "Turn.hpp"
 #include "overload.hpp"
 #include <iostream>
 #include <list>
@@ -71,32 +73,29 @@ std::string Game::queensString(bool debug) {
   return msg;
 }
 
-bool Game::handleDragon(int attackedIdx) {
+std::optional<int> Game::handleDragon(int attackedIdx) {
   auto &player = players[attackedIdx];
   int dragonIdx = player.find<Dragon>();
   if (dragonIdx < 0)
-    return false;
+    return {};
 
-  player.playCard(dragonIdx, deck.pop_card());
-
-  return true;
+  return dragonIdx;
 }
-bool Game::handleWand(int attackedIdx) {
+
+std::optional<int> Game::handleWand(int attackedIdx) {
   auto &player = players[attackedIdx];
   int wandIdx = player.find<Wand>();
   if (wandIdx < 0)
-    return false;
+    return {};
 
-  player.playCard(wandIdx, deck.pop_card());
-
-  return true;
+  return wandIdx;
 }
-awaitable<bool> Game::playKnight(int currentPlayer) {
+awaitable<Turn> Game::playKnight(int currentPlayer) {
   std::stringstream msg;
 
   if (!anyPlayerHasQueens()) {
     io_handler.write(currentPlayer, "No player have any queens.\n");
-    co_return false;
+    co_return Turn();
   }
 
   bool hasQueens = false;
@@ -120,18 +119,20 @@ awaitable<bool> Game::playKnight(int currentPlayer) {
         return i >= 0 && i < players[attackPlayerIdx].getQueenCount();
       });
 
-  if (handleDragon(attackPlayerIdx)) { // maybe later will wait for result of
-                                       // other player
+  auto dragonIdx = handleDragon(attackPlayerIdx);
+
+  if (dragonIdx.has_value()) { // maybe later will wait for result of
+                               // other player
     // poor baby, took your knight
-    co_return true;
+    co_return Turn({CardMove(attackPlayerIdx, *dragonIdx)}, true);
   }
 
-  players[currentPlayer].addQueen(
-      players[attackPlayerIdx].removeQueen(queenIdx));
-
-  co_return true;
+  co_return Turn({QueenMove(currentPlayer, attackPlayerIdx, queenIdx,
+                            QueenMove::KNIGHT)}, // TODO: might be bug
+                 true);
 }
-awaitable<bool> Game::playKing(int currentPlayer) {
+
+awaitable<Turn> Game::playKing(int currentPlayer) {
   std::stringstream msg;
 
   std::vector<int> range;
@@ -142,7 +143,7 @@ awaitable<bool> Game::playKing(int currentPlayer) {
   if (range.size() == 0) {
     // std::cout << "No hidden queens available" << std::endl;
     io_handler.write(currentPlayer, "No hidden queens available");
-    co_return false;
+    co_return Turn();
   }
 
   auto isQueenIdxValid = [&range](int i) {
@@ -158,24 +159,27 @@ awaitable<bool> Game::playKing(int currentPlayer) {
       << "Insert chosen queen: \n";
 
   int input = co_await readInput(currentPlayer, msg.str(), isQueenIdxValid);
-  auto wokenQueen = wakeQueen(input);
-  if (!wokenQueen.has_value())
+  auto peekedQueen = peekQueen(input);
+  if (!peekedQueen.has_value())
     throw std::exception();
-  players[currentPlayer].addQueen(wokenQueen.value());
+  // players[currentPlayer].addQueen(peekedQueen.value());
 
-  if (wokenQueen->getType() == Queen::Type::Roses) {
-    std::cout << "Roses played" << std::endl;
-    static_cast<void>(co_await playKing(currentPlayer));
+  Turn res = Turn({QueenMove(currentPlayer, -1, input, QueenMove::KING)}, true);
+
+  if (peekedQueen->getType() == Queen::Type::Roses) {
+    Turn tmp = co_await playKing(currentPlayer);
+    if (res.valid)
+      res.moves.splice(res.moves.end(), tmp.moves);
   }
 
-  co_return true;
+  co_return res;
 }
-awaitable<bool> Game::playPotion(int currentPlayer) {
+awaitable<Turn> Game::playPotion(int currentPlayer) {
   std::stringstream msg;
 
   if (!anyPlayerHasQueens()) {
     io_handler.write(currentPlayer, "No player have any queens.");
-    co_return false;
+    co_return Turn();
   }
 
   bool hasQueens = false;
@@ -199,16 +203,21 @@ awaitable<bool> Game::playPotion(int currentPlayer) {
         return i >= 0 && i < players[attackPlayerIdx].getQueenCount();
       });
 
-  if (handleWand(attackPlayerIdx)) { // maybe later will wait for result of
-                                     // other player
+  auto wandIdx = handleWand(attackPlayerIdx);
+
+  if (wandIdx.has_value()) { // maybe later will wait for result of
+                             // other player
     // poor baby, the princess is awake
-    co_return true;
+    co_return Turn({CardMove(attackPlayerIdx, *wandIdx)}, true);
   }
 
-  sleepyQueen(players[attackPlayerIdx].removeQueen(queenIdx));
+  // sleepyQueen(players[attackPlayerIdx].removeQueen(queenIdx));
 
-  co_return true;
+  co_return Turn(
+      {QueenMove(currentPlayer, attackPlayerIdx, queenIdx, QueenMove::POTION)},
+      true); // TODO: stopped in the middle
 }
+
 awaitable<void> Game::PlayTurn(int playerIdx) {
   // TODO: DEBUG ONLY:
   // this->printPlayers();
@@ -220,10 +229,11 @@ awaitable<void> Game::PlayTurn(int playerIdx) {
   msg << player;
   msg << "Insert which card you want to play: \n";
 
-  bool res = false;
+  Turn res;
   int cardIdx;
 
   while (!res) {
+    res = Turn();
     cardIdx = co_await readInput(playerIdx, msg.str(), [this](int i) {
       return i >= 0 && i < CardsPerPlayer;
     });
@@ -237,31 +247,78 @@ awaitable<void> Game::PlayTurn(int playerIdx) {
     io_handler.write(playerIdx, str);
 
     res = co_await std::visit(
-        Overload{[](Number n) -> awaitable<bool> { co_return true; },
+        Overload{[playerIdx](Number n) -> awaitable<Turn> {
+                   co_return Turn({}, true);
+                 },
                  [this, playerIdx](Knight k) { return playKnight(playerIdx); },
                  [this, playerIdx](King k) { return playKing(playerIdx); },
                  [this, playerIdx](Potion k) { return playPotion(playerIdx); },
-                 [](Dragon _) -> awaitable<bool> { co_return false; },
-                 [](Wand _) -> awaitable<bool> { co_return false; },
+                 [](Dragon _) -> awaitable<Turn> { co_return Turn({}, false); },
+                 [](Wand _) -> awaitable<Turn> { co_return Turn({}, false); },
                  [](auto c) {
                    std::cerr << "errer: " << printCard(c) << std::endl;
-                   return awaitable<bool>{};
+                   return Turn({}, false);
                  }},
         peekedCard);
+
+    res.moves.push_front({CardMove(playerIdx, cardIdx)});
   }
 
-  player.playCard(cardIdx, deck.pop_card());
+  commitTurn(res);
 }
+
+bool Game::commitTurn(const Turn &turn) {
+  if (!turn) {
+    throw std::exception();
+  }
+
+  auto visitor =
+      Overload{[this](CardMove c) {
+                 players[c.playerIdx].playCard(c.cardIdx, deck.pop_card());
+                 return true;
+               },
+               [this](QueenMove q) {
+                 if (q.type == QueenMove::KING) {
+                   auto wokenQueen = wakeQueen(q.cardIdx);
+                   if (!wokenQueen.has_value())
+                     return false;
+                   players[q.playerIdx].addQueen(*wokenQueen);
+                 } else { // POTION/KNIGHT
+                   auto queen = players[q.targetIdx].removeQueen(q.cardIdx);
+                   if (q.type == QueenMove::KNIGHT)
+                     players[q.playerIdx].addQueen(queen);
+                   else // QueenMove::POTION
+                     sleepyQueen(queen);
+                 }
+                 return true;
+               }};
+
+  for (auto &move : turn.moves) {
+    if (!std::visit(visitor, move)) {
+      std::cout << "move visitor failed!" << std::endl;
+      return false;
+    }
+  }
+  return true;
+}
+
 bool Game::anyPlayerHasQueens() {
   return std::any_of(players.begin(), players.end(),
                      [](const Player &p) { return p.getQueenCount() > 0; });
 }
+
 std::optional<Queen> Game::wakeQueen(int idx) {
+  auto queen = peekQueen(idx);
+  queens[idx].second = false;
+  return queen;
+}
+
+std::optional<Queen> Game::peekQueen(int idx) {
   if (queens[idx].second == false)
     return {};
-  queens[idx].second = false;
   return queens[idx].first;
 }
+
 void Game::sleepyQueen(Queen q) {
   // auto it = queens.begin();
   auto it = std::find_if(queens.begin(), queens.end(),
