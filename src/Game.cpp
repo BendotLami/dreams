@@ -99,37 +99,41 @@ awaitable<Turn> Game::playKnight(int currentPlayer) {
   }
 
   bool hasQueens = false;
-  int attackPlayerIdx;
+  int attackedPlayerIdx;
   while (!hasQueens) {
     msg << "Insert which player you want to attack: \n";
-    attackPlayerIdx = co_await readInput(
+    attackedPlayerIdx = co_await readInput(
         currentPlayer, msg.str(), [this, currentPlayer](int i) {
           return i >= 0 && i < players.size() && i != currentPlayer;
         });
-    hasQueens = players[attackPlayerIdx].getQueenCount() > 0;
+    hasQueens = players[attackedPlayerIdx].getQueenCount() > 0;
     if (!hasQueens)
       io_handler.write(currentPlayer, "Player does not have queens.");
   }
+  auto &attackedPlayer = players[attackedPlayerIdx];
 
   msg.str(std::string());
-  msg << players[attackPlayerIdx].printQueens() << '\n';
+  msg << attackedPlayer.printQueens() << '\n';
   msg << "Pick which queen you want to steal: \n";
-  int queenIdx = co_await readInput(
-      currentPlayer, msg.str(), [this, attackPlayerIdx](int i) {
-        return i >= 0 && i < players[attackPlayerIdx].getQueenCount();
+  int queenIdx =
+      co_await readInput(currentPlayer, msg.str(), [&attackedPlayer](int i) {
+        return i >= 0 && i < attackedPlayer.getQueenCount();
       });
 
-  auto dragonIdx = handleDragon(attackPlayerIdx);
+  auto dragonIdx = handleDragon(attackedPlayerIdx);
 
   if (dragonIdx.has_value()) { // maybe later will wait for result of
                                // other player
     // poor baby, took your knight
-    co_return Turn({CardMove(attackPlayerIdx, *dragonIdx)}, true);
+    co_return Turn({CardMove(attackedPlayerIdx, *dragonIdx,
+                             attackedPlayer.peekCard(*dragonIdx))},
+                   true);
   }
 
-  co_return Turn({QueenMove(currentPlayer, attackPlayerIdx, queenIdx,
-                            QueenMove::KNIGHT)}, // TODO: might be bug
-                 true);
+  co_return Turn(
+      {QueenMove(currentPlayer, attackedPlayerIdx, queenIdx, QueenMove::KNIGHT,
+                 attackedPlayer.peekQueen(queenIdx))}, // TODO: might be bug
+      true);
 }
 
 awaitable<Turn> Game::playKing(int currentPlayer) {
@@ -164,7 +168,9 @@ awaitable<Turn> Game::playKing(int currentPlayer) {
     throw std::exception();
   // players[currentPlayer].addQueen(peekedQueen.value());
 
-  Turn res = Turn({QueenMove(currentPlayer, -1, input, QueenMove::KING)}, true);
+  Turn res =
+      Turn({QueenMove(currentPlayer, -1, input, QueenMove::KING, *peekedQueen)},
+           true);
 
   if (peekedQueen->getType() == Queen::Type::Roses) {
     Turn tmp = co_await playKing(currentPlayer);
@@ -183,38 +189,42 @@ awaitable<Turn> Game::playPotion(int currentPlayer) {
   }
 
   bool hasQueens = false;
-  int attackPlayerIdx;
+  int attackedPlayerIdx;
   while (!hasQueens) {
     msg << "Insert which player you want to attack: \n";
-    attackPlayerIdx = co_await readInput(
+    attackedPlayerIdx = co_await readInput(
         currentPlayer, msg.str(), [this, currentPlayer](int i) {
           return i >= 0 && i < players.size() && i != currentPlayer;
         });
-    hasQueens = players[attackPlayerIdx].getQueenCount() > 0;
+    hasQueens = players[attackedPlayerIdx].getQueenCount() > 0;
     if (!hasQueens)
       io_handler.write(currentPlayer, "Player does not have queens.");
   }
+  auto &attackedPlayer = players[attackedPlayerIdx];
 
   msg.str(std::string());
-  msg << players[attackPlayerIdx].printQueens() << '\n';
+  msg << attackedPlayer.printQueens() << '\n';
   msg << "Pick which queen you want to poison: \n";
-  int queenIdx = co_await readInput(
-      currentPlayer, msg.str(), [this, attackPlayerIdx](int i) {
-        return i >= 0 && i < players[attackPlayerIdx].getQueenCount();
+  int queenIdx =
+      co_await readInput(currentPlayer, msg.str(), [&attackedPlayer](int i) {
+        return i >= 0 && i < attackedPlayer.getQueenCount();
       });
 
-  auto wandIdx = handleWand(attackPlayerIdx);
+  auto wandIdx = handleWand(attackedPlayerIdx);
 
   if (wandIdx.has_value()) { // maybe later will wait for result of
                              // other player
     // poor baby, the princess is awake
-    co_return Turn({CardMove(attackPlayerIdx, *wandIdx)}, true);
+    co_return Turn({CardMove(attackedPlayerIdx, *wandIdx,
+                             attackedPlayer.peekCard(*wandIdx))},
+                   true);
   }
 
-  // sleepyQueen(players[attackPlayerIdx].removeQueen(queenIdx));
+  // sleepyQueen(attackedPlayer.removeQueen(queenIdx));
 
   co_return Turn(
-      {QueenMove(currentPlayer, attackPlayerIdx, queenIdx, QueenMove::POTION)},
+      {QueenMove(currentPlayer, attackedPlayerIdx, queenIdx, QueenMove::POTION,
+                 attackedPlayer.peekQueen(queenIdx))},
       true); // TODO: stopped in the middle
 }
 
@@ -261,7 +271,7 @@ awaitable<void> Game::PlayTurn(int playerIdx) {
                  }},
         peekedCard);
 
-    res.moves.push_front({CardMove(playerIdx, cardIdx)});
+    res.moves.push_front({CardMove(playerIdx, cardIdx, peekedCard)});
   }
 
   commitTurn(res);
@@ -284,6 +294,8 @@ bool Game::commitTurn(const Turn &turn) {
                      return false;
                    players[q.playerIdx].addQueen(*wokenQueen);
                  } else { // POTION/KNIGHT
+                   std::cout << q.playerIdx << ", " << q.targetIdx << q.cardIdx
+                             << std::endl;
                    auto queen = players[q.targetIdx].removeQueen(q.cardIdx);
                    if (q.type == QueenMove::KNIGHT)
                      players[q.playerIdx].addQueen(queen);
@@ -294,6 +306,8 @@ bool Game::commitTurn(const Turn &turn) {
                }};
 
   for (auto &move : turn.moves) {
+    std::cout << "handling move" << std::endl;
+    io_handler.write_all(getMoveString(move));
     if (!std::visit(visitor, move)) {
       std::cout << "move visitor failed!" << std::endl;
       return false;

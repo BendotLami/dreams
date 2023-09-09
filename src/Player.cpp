@@ -55,6 +55,13 @@ Card Player::peekCard(int idx) {
   std::advance(it, idx);
   return *it;
 }
+
+Queen Player::peekQueen(int idx) {
+  auto it = queens.begin();
+  std::advance(it, idx);
+  return *it;
+}
+
 Card Player::playCard(int idx, Card nextCard) {
   auto it = cards.begin();
   std::advance(it, idx);

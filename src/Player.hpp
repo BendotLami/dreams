@@ -29,6 +29,7 @@ public:
   Queen removeQueen(int idx);
 
   Card peekCard(int idx);
+  Queen peekQueen(int idx);
 
   // For now, multiple cards is multiple calls
   Card playCard(int idx, Card nextCard);
