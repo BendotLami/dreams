@@ -6,13 +6,13 @@ DREAMS_FLAGS = --std=c++20 -g
 
 TARGET_EXEC := sdreams
 
-BUILD_DIR := .
+BUILD_DIR := ./build
 SRC_DIR := ./src
 
 OBJS := $(DREAMS_SRCS:%=$(BUILD_DIR)/%.o)
 DEPS := $(OBJS:.o=-.d)
 
-all: sdreams user clean_obj
+all: sdreams user
 
 user: ./src/chat_client.cpp
 	$(CXX) $(CHAT_FLAGS) ./src/chat_client.cpp -o user
@@ -24,7 +24,7 @@ server: chat_server.cpp
 # 	$(CXX) $(DREAMS_FLAGS) $(CHAT_FLAGS) dreams_server.cpp -o sdreams
 
 # sdreams server
-$(BUILD_DIR)/$(TARGET_EXEC): $(OBJS)
+$(TARGET_EXEC): $(OBJS)
 	$(CXX) $(OBJS) -o $@ $(DREAMS_FLAGS) $(CHAT_FLAGS)
 
 $(BUILD_DIR)/%.cpp.o: %.cpp
