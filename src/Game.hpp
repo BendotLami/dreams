@@ -53,7 +53,7 @@ private:
   void sleepyQueen(Queen q);
 
   Deck deck;
-  std::vector<Player> players;
-  std::vector<std::pair<Queen, bool>> queens;
+  Players players;
+  Queens queens;
   IOHandler &io_handler;
 };

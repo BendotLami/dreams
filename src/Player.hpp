@@ -1,10 +1,14 @@
 #pragma once
 
-#include "Cards.hpp"
-#include "Queen.hpp"
 #include <algorithm>
 #include <list>
 #include <variant>
+
+class Player;
+using Players = std::vector<Player>;
+
+#include "Cards.hpp"
+#include "Queen.hpp"
 
 class Player {
 
@@ -61,3 +65,5 @@ private:
   std::list<Queen> queens;
   std::list<Card> cards;
 };
+
+using Players = std::vector<Player>;

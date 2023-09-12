@@ -1,5 +1,6 @@
 #pragma once
 
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -23,7 +24,15 @@ private:
   Type type;
 };
 
+using GameQueen = std::pair<Queen, bool>;
+using Queens = std::vector<GameQueen>;
+
 class QueenFactory {
 public:
-  static std::vector<Queen> getQueens();
+  static Queens getQueens();
 };
+
+std::optional<Queen> peekQueen(const Queens &queens, int idx);
+
+std::string queensString(const Queens &queens, bool debug);
+std::string queensString(const Queens &queens);

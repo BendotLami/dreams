@@ -1,5 +1,7 @@
 #pragma once
 
+struct Turn;
+
 #include "Cards.hpp"
 #include "Queen.hpp"
 #include <list>

@@ -1,5 +1,7 @@
 #include "Cards.hpp"
-#include "overload.hpp"
+#include "utils.hpp"
+#include <sstream>
+#include <vector>
 
 static char toHex(char i) {
   if (i > 15 || i < 0)
@@ -49,4 +51,53 @@ CardType getType(const Card &c) {
                                  [](auto c) { return "?"; }};
 
   return std::visit(getTypeVisitor, c);
+}
+
+awaitable<Turn> playKing(const Players &players, const Queens &queens,
+                         IOHandler &io_handler, int currentPlayer) {
+  std::stringstream msg;
+
+  std::vector<int> range;
+  for (int i = 0; i < queens.size(); i++)
+    if (queens[i].second)
+      range.push_back(i);
+
+  if (range.size() == 0) {
+    // std::cout << "No hidden queens available" << std::endl;
+    io_handler.write(currentPlayer, "No hidden queens available");
+    co_return Turn();
+  }
+
+  auto isQueenIdxValid = [&range](int i) {
+    for (const auto j : range)
+      if (i == j)
+        return true;
+    return false;
+  };
+
+  msg << "Hidden Queens:\n";
+  msg << queensString(queens, true);
+  msg << "\n"
+      << "Insert chosen queen: \n";
+
+  int input =
+      co_await readInput(currentPlayer, msg.str(), io_handler, isQueenIdxValid);
+  auto peekedQueen = peekQueen(queens, input);
+  if (!peekedQueen.has_value())
+    throw std::exception();
+  // players[currentPlayer].addQueen(peekedQueen.value());
+
+  Turn res =
+      Turn({QueenMove(currentPlayer, -1, input, QueenMove::KING, *peekedQueen)},
+           true);
+
+  if (peekedQueen->getType() == Queen::Type::Roses) {
+    Queens copy = queens;
+    copy[input].second = false;
+    Turn tmp = co_await playKing(players, copy, io_handler, currentPlayer);
+    if (res.valid)
+      res.moves.splice(res.moves.end(), tmp.moves);
+  }
+
+  co_return res;
 }

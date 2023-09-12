@@ -2,7 +2,7 @@
 #include "Cards.hpp"
 #include "Queen.hpp"
 #include "Turn.hpp"
-#include "overload.hpp"
+#include "utils.hpp"
 #include <iostream>
 #include <list>
 #include <random>
@@ -17,26 +17,12 @@ void Game::initCards(int players) {
 }
 awaitable<char> Game::readInput(int playerIdx, std::string msg,
                                 std::function<bool(int)> predicate) {
-  auto validateInput = [&predicate](const std::string &input) {
-    if (input.size() != 1 && input.size() != 2)
-      return false;
-    unsigned char inputIdx = input[0] - '0';
-    return predicate(inputIdx);
-  };
-
-  std::string input;
-  do {
-    io_handler.write(playerIdx, msg);
-    input = co_await io_handler.read(playerIdx);
-  } while (!validateInput(input));
-  co_return input[0] - '0';
+  return ::readInput(playerIdx, msg, io_handler, predicate);
 }
+
 Game::Game(int players, IOHandler &io_handler) : io_handler(io_handler) {
   initCards(players);
-  std::vector<Queen> tmp = QueenFactory::getQueens();
-  std::transform(tmp.begin(), tmp.end(), std::back_inserter(queens),
-                 [](Queen &q) { return std::pair<Queen, bool>(q, true); });
-
+  queens = QueenFactory::getQueens();
   std::random_device rd;
   std::mt19937 g(rd());
   std::shuffle(queens.begin(), queens.end(), g);
@@ -59,15 +45,13 @@ void Game::printPlayers() { io_handler.write_all(playersString()); }
 std::string Game::queensString(bool debug) {
   std::string msg;
   int i = 0;
-  for_each(queens.begin(), queens.end(),
-           [&msg, &i, debug](std::pair<Queen, bool> a) {
-             std::string queenRepr =
-                 a.second ? (debug ? a.first.toString() : "Q") : "_";
-             msg.append(std::to_string(i++));
-             msg.append(": ");
-             msg.append(queenRepr);
-             msg.push_back(' ');
-           });
+  for_each(queens.begin(), queens.end(), [&msg, &i, debug](GameQueen a) {
+    std::string queenRepr = a.second ? (debug ? a.first.toString() : "Q") : "_";
+    msg.append(std::to_string(i++));
+    msg.append(": ");
+    msg.append(queenRepr);
+    msg.push_back(' ');
+  });
   msg.pop_back();
 
   return msg;
@@ -137,49 +121,9 @@ awaitable<Turn> Game::playKnight(int currentPlayer) {
 }
 
 awaitable<Turn> Game::playKing(int currentPlayer) {
-  std::stringstream msg;
-
-  std::vector<int> range;
-  for (int i = 0; i < queens.size(); i++)
-    if (queens[i].second)
-      range.push_back(i);
-
-  if (range.size() == 0) {
-    // std::cout << "No hidden queens available" << std::endl;
-    io_handler.write(currentPlayer, "No hidden queens available");
-    co_return Turn();
-  }
-
-  auto isQueenIdxValid = [&range](int i) {
-    for (const auto j : range)
-      if (i == j)
-        return true;
-    return false;
-  };
-
-  msg << "Hidden Queens:\n";
-  msg << queensString(false);
-  msg << "\n"
-      << "Insert chosen queen: \n";
-
-  int input = co_await readInput(currentPlayer, msg.str(), isQueenIdxValid);
-  auto peekedQueen = peekQueen(input);
-  if (!peekedQueen.has_value())
-    throw std::exception();
-  // players[currentPlayer].addQueen(peekedQueen.value());
-
-  Turn res =
-      Turn({QueenMove(currentPlayer, -1, input, QueenMove::KING, *peekedQueen)},
-           true);
-
-  if (peekedQueen->getType() == Queen::Type::Roses) {
-    Turn tmp = co_await playKing(currentPlayer);
-    if (res.valid)
-      res.moves.splice(res.moves.end(), tmp.moves);
-  }
-
-  co_return res;
+  return ::playKing(players, queens, io_handler, currentPlayer);
 }
+
 awaitable<Turn> Game::playPotion(int currentPlayer) {
   std::stringstream msg;
 
