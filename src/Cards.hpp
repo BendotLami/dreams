@@ -43,3 +43,6 @@ awaitable<Turn> playKing(const Players &players, const Queens &queens,
 
 awaitable<Turn> playKnight(const Players &players, const Queens &queens,
                            IOHandler &io_handler, int currentPlayer);
+
+awaitable<Turn> playPotion(const Players &players, const Queens &queens,
+                           IOHandler &io_handler, int currentPlayer);

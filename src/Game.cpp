@@ -106,34 +106,16 @@ awaitable<Turn> Game::playKing(int currentPlayer) {
 }
 
 awaitable<Turn> Game::playPotion(int currentPlayer) {
-  std::stringstream msg;
 
-  if (!anyPlayerHasQueens()) {
-    io_handler.write(currentPlayer, "No player have any queens.");
+  Turn turn = co_await ::playPotion(players, queens, io_handler, currentPlayer);
+
+  if (!turn.valid)
     co_return Turn();
-  }
 
-  bool hasQueens = false;
-  int attackedPlayerIdx;
-  while (!hasQueens) {
-    msg << "Insert which player you want to attack: \n";
-    attackedPlayerIdx = co_await readInput(
-        currentPlayer, msg.str(), [this, currentPlayer](int i) {
-          return i >= 0 && i < players.size() && i != currentPlayer;
-        });
-    hasQueens = players[attackedPlayerIdx].getQueenCount() > 0;
-    if (!hasQueens)
-      io_handler.write(currentPlayer, "Player does not have queens.");
-  }
-  auto &attackedPlayer = players[attackedPlayerIdx];
-
-  msg.str(std::string());
-  msg << attackedPlayer.printQueens() << '\n';
-  msg << "Pick which queen you want to poison: \n";
-  int queenIdx =
-      co_await readInput(currentPlayer, msg.str(), [&attackedPlayer](int i) {
-        return i >= 0 && i < attackedPlayer.getQueenCount();
-      });
+  int attackedPlayerIdx =
+      std::visit(Overload{[](QueenMove q) { return q.targetIdx; },
+                          [](auto _) { return -1; }},
+                 turn.moves.front());
 
   auto wandIdx = handleWand(attackedPlayerIdx);
 
@@ -141,16 +123,11 @@ awaitable<Turn> Game::playPotion(int currentPlayer) {
                              // other player
     // poor baby, the princess is awake
     co_return Turn({CardMove(attackedPlayerIdx, *wandIdx,
-                             attackedPlayer.peekCard(*wandIdx))},
+                             players[attackedPlayerIdx].peekCard(*wandIdx))},
                    true);
   }
 
-  // sleepyQueen(attackedPlayer.removeQueen(queenIdx));
-
-  co_return Turn(
-      {QueenMove(currentPlayer, attackedPlayerIdx, queenIdx, QueenMove::POTION,
-                 attackedPlayer.peekQueen(queenIdx))},
-      true); // TODO: stopped in the middle
+  co_return turn;
 }
 
 awaitable<void> Game::PlayTurn(int playerIdx) {

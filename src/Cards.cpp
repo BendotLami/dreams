@@ -138,3 +138,40 @@ awaitable<Turn> playKnight(const Players &players, const Queens &queens,
                  attackedPlayer.peekQueen(queenIdx))}, // TODO: might be bug
       true);
 }
+
+awaitable<Turn> playPotion(const Players &players, const Queens &queens,
+                           IOHandler &io_handler, int currentPlayer) {
+  std::stringstream msg;
+
+  if (!anyPlayerHasQueens(players)) {
+    io_handler.write(currentPlayer, "No player have any queens.");
+    co_return Turn();
+  }
+
+  bool hasQueens = false;
+  int attackedPlayerIdx;
+  while (!hasQueens) {
+    msg << "Insert which player you want to attack: \n";
+    attackedPlayerIdx = co_await readInput(
+        currentPlayer, msg.str(), io_handler, [&players, currentPlayer](int i) {
+          return i >= 0 && i < players.size() && i != currentPlayer;
+        });
+    hasQueens = players[attackedPlayerIdx].getQueenCount() > 0;
+    if (!hasQueens)
+      io_handler.write(currentPlayer, "Player does not have queens.");
+  }
+  auto &attackedPlayer = players[attackedPlayerIdx];
+
+  msg.str(std::string());
+  msg << attackedPlayer.printQueens() << '\n';
+  msg << "Pick which queen you want to poison: \n";
+  int queenIdx = co_await readInput(
+      currentPlayer, msg.str(), io_handler, [&attackedPlayer](int i) {
+        return i >= 0 && i < attackedPlayer.getQueenCount();
+      });
+
+  co_return Turn(
+      {QueenMove(currentPlayer, attackedPlayerIdx, queenIdx, QueenMove::POTION,
+                 attackedPlayer.peekQueen(queenIdx))},
+      true); // TODO: stopped in the middle
+}
