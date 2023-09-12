@@ -6,13 +6,14 @@
 
 class Deck {
   constexpr static int NumOfKings = 8;
-  constexpr static int NumOfDragons = 8;
-  constexpr static int NumOfWands = 8;
-  constexpr static int NumOfKnights = 8;
-  constexpr static int NumOfPotions = 8;
+  constexpr static int NumOfDragons = 3;
+  constexpr static int NumOfWands = 3;
+  constexpr static int NumOfKnights = 4;
+  constexpr static int NumOfPotions = 4;
+  constexpr static int NumOfJesters = 5;
   constexpr static int NumOfNumberCards = 40;
   constexpr static int TotalCards = NumOfKings + NumOfDragons + NumOfWands +
-                                    NumOfKnights + NumOfPotions +
+                                    NumOfKnights + NumOfPotions + NumOfJesters +
                                     NumOfNumberCards;
 
 public:
@@ -30,6 +31,8 @@ public:
   std::list<Card> pop_cards(int count);
 
   void push_card(Card c);
+
+  Card peek_card();
 
 private:
   void shuffle();

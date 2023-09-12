@@ -27,11 +27,13 @@ Game::Game(int players, IOHandler &io_handler) : io_handler(io_handler) {
   std::mt19937 g(rd());
   std::shuffle(queens.begin(), queens.end(), g);
 };
+
 std::string Game::getPlayerHand(int player) {
   if (player >= players.size())
     return "Error: No Such Player!";
   return players[player].toString();
 }
+
 std::string Game::playersString() {
   std::stringstream ss;
   for (int i = 0; i < players.size(); i++) {
@@ -130,6 +132,11 @@ awaitable<Turn> Game::playPotion(int currentPlayer) {
   co_return turn;
 }
 
+awaitable<Turn> Game::playJester(int currentPlayer) {
+  return ::playJester(players, queens, io_handler, deck.peek_card(),
+                      currentPlayer);
+}
+
 awaitable<void> Game::PlayTurn(int playerIdx) {
   // TODO: DEBUG ONLY:
   // this->printPlayers();
@@ -166,11 +173,12 @@ awaitable<void> Game::PlayTurn(int playerIdx) {
                  [this, playerIdx](Knight k) { return playKnight(playerIdx); },
                  [this, playerIdx](King k) { return playKing(playerIdx); },
                  [this, playerIdx](Potion k) { return playPotion(playerIdx); },
+                 [this, playerIdx](Jester j) { return playJester(playerIdx); },
                  [](Dragon _) -> awaitable<Turn> { co_return Turn({}, false); },
                  [](Wand _) -> awaitable<Turn> { co_return Turn({}, false); },
-                 [](auto c) {
+                 [](auto c) -> awaitable<Turn> {
                    std::cerr << "errer: " << printCard(c) << std::endl;
-                   return Turn({}, false);
+                   co_return Turn({}, false);
                  }},
         peekedCard);
 
@@ -187,7 +195,9 @@ bool Game::commitTurn(const Turn &turn) {
 
   auto visitor =
       Overload{[this](CardMove c) {
-                 players[c.playerIdx].playCard(c.cardIdx, deck.pop_card());
+                 Card playedCard =
+                     players[c.playerIdx].playCard(c.cardIdx, deck.pop_card());
+                 deck.push_card(playedCard);
                  return true;
                },
                [this](QueenMove q) {
@@ -234,7 +244,6 @@ std::optional<Queen> Game::wakeQueen(int idx) {
 }
 
 void Game::sleepyQueen(Queen q) {
-  // auto it = queens.begin();
   auto it = std::find_if(queens.begin(), queens.end(),
                          [](auto &q) { return !q.second; });
   if (it == queens.end())

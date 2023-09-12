@@ -39,6 +39,8 @@ private:
 
   awaitable<Turn> playPotion(int currentPlayer);
 
+  awaitable<Turn> playJester(int currentPlayer);
+
 public:
   awaitable<void> PlayTurn(int playerIdx);
 

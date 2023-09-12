@@ -16,7 +16,8 @@ static auto printCardVisitor =
              [](Knight c) { return 'k'; },
              [](Potion c) { return 'p'; },
              [](Number c) -> char { return toHex(c.getValue()); },
-             [](auto c) { return "?"; }
+             [](Jester c) { return 'j'; },
+             [](auto c) { return '?'; }
 
     };
 
@@ -31,7 +32,8 @@ static auto printFullCardVisitor =
                s.append(std::to_string(c.getValue()));
                return s;
              },
-             [](auto c) { return "?"; }
+             [](Jester c) { return std::string("Jester"); },
+             [](auto c) { return std::string("?"); }
 
     };
 
@@ -48,6 +50,7 @@ CardType getType(const Card &c) {
                                  [](Knight c) { return CardType::KNIGHT; },
                                  [](Potion c) { return CardType::POTION; },
                                  [](Number c) { return CardType::NUMBER; },
+                                 [](Jester c) { return CardType::JESTER; },
                                  [](auto c) { return "?"; }};
 
   return std::visit(getTypeVisitor, c);
@@ -85,7 +88,6 @@ awaitable<Turn> playKing(const Players &players, const Queens &queens,
   auto peekedQueen = peekQueen(queens, input);
   if (!peekedQueen.has_value())
     throw std::exception();
-  // players[currentPlayer].addQueen(peekedQueen.value());
 
   Turn res =
       Turn({QueenMove(currentPlayer, -1, input, QueenMove::KING, *peekedQueen)},
@@ -174,4 +176,37 @@ awaitable<Turn> playPotion(const Players &players, const Queens &queens,
       {QueenMove(currentPlayer, attackedPlayerIdx, queenIdx, QueenMove::POTION,
                  attackedPlayer.peekQueen(queenIdx))},
       true); // TODO: stopped in the middle
+}
+
+awaitable<Turn> playJester(const Players &players, const Queens &queens,
+                           IOHandler &io_handler, Card nextCard,
+                           int currentPlayer) {
+  std::string msg;
+
+  int number = std::visit(Overload{[](Number c) { return c.getValue(); },
+                                   [](auto c) { return -1; }},
+                          nextCard);
+
+  msg.append("Next card in deck is ");
+  msg.append(printFullCard(nextCard));
+  msg.push_back('\n');
+
+  io_handler.write_all(msg);
+
+  if (number < 0) {
+    // taken a special card, continue with a valid empty move
+    // NOTE: assuming nextCard is a peek to the deck, meaning this card WILL be
+    // taken by the player
+    co_return Turn({}, true);
+  }
+
+  // taken a number, winnerPlayer should wake a queen and continue
+  int winnerPlayer = (currentPlayer + number) % players.size();
+  msg.clear();
+  msg.append("Player ");
+  msg.append(std::to_string(winnerPlayer));
+  msg.append(" has won jester round. Currently choosing queen...\n");
+  Turn kingTurn = co_await playKing(players, queens, io_handler, winnerPlayer);
+
+  co_return kingTurn;
 }

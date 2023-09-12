@@ -7,13 +7,14 @@
 
 using boost::asio::awaitable;
 
-enum CardType { KING, DRAGON, WAND, KNIGHT, POTION, NUMBER };
+enum CardType { KING, DRAGON, WAND, KNIGHT, POTION, NUMBER, JESTER };
 
 class King {};
 class Dragon {};
 class Wand {};
 class Knight {};
 class Potion {};
+class Jester {};
 
 class Number {
 public:
@@ -24,7 +25,7 @@ private:
   int value;
 };
 
-using Card = std::variant<King, Dragon, Wand, Knight, Potion, Number>;
+using Card = std::variant<King, Dragon, Wand, Knight, Potion, Number, Jester>;
 
 #include "Player.hpp"
 #include "Turn.hpp"
@@ -46,3 +47,7 @@ awaitable<Turn> playKnight(const Players &players, const Queens &queens,
 
 awaitable<Turn> playPotion(const Players &players, const Queens &queens,
                            IOHandler &io_handler, int currentPlayer);
+
+awaitable<Turn> playJester(const Players &players, const Queens &queens,
+                           IOHandler &io_handler, Card nextCard,
+                           int currentPlayer);

@@ -4,7 +4,6 @@
 #include <vector>
 
 Deck::Deck() {
-  // cards.reserve(TotalCards);
   for (int i = 0; i < NumOfKings; i++)
     cards.emplace_back(King());
   for (int i = 0; i < NumOfDragons; i++)
@@ -15,6 +14,8 @@ Deck::Deck() {
     cards.emplace_back(Knight());
   for (int i = 0; i < NumOfPotions; i++)
     cards.emplace_back(Potion());
+  for (int i = 0; i < NumOfJesters; i++)
+    cards.emplace_back(Jester());
   for (int i = 0; i < NumOfNumberCards; i++)
     cards.emplace_back(Number(i / 4));
 
@@ -59,3 +60,5 @@ void Deck::shuffle() {
   nextShuffle = cards.size();
   idx = 0;
 };
+
+Card Deck::peek_card() { return cards.front(); }
