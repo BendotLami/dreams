@@ -252,7 +252,8 @@ awaitable<void> Game::PlayTurn(int playerIdx) {
     Card peekedCard = player.peekCard(cardIdx);
     // std::cout << printCard(peekedCard) << std::endl;
     std::string str;
-    str.push_back(printCard(peekedCard));
+    str.append("You played ");
+    str.append(printFullCard(peekedCard));
     str.push_back('\n');
     io_handler.write(playerIdx, str);
 
@@ -294,8 +295,6 @@ bool Game::commitTurn(const Turn &turn) {
                      return false;
                    players[q.playerIdx].addQueen(*wokenQueen);
                  } else { // POTION/KNIGHT
-                   std::cout << q.playerIdx << ", " << q.targetIdx << q.cardIdx
-                             << std::endl;
                    auto queen = players[q.targetIdx].removeQueen(q.cardIdx);
                    if (q.type == QueenMove::KNIGHT)
                      players[q.playerIdx].addQueen(queen);
@@ -306,7 +305,6 @@ bool Game::commitTurn(const Turn &turn) {
                }};
 
   for (auto &move : turn.moves) {
-    std::cout << "handling move" << std::endl;
     io_handler.write_all(getMoveString(move));
     if (!std::visit(visitor, move)) {
       std::cout << "move visitor failed!" << std::endl;
@@ -321,16 +319,16 @@ bool Game::anyPlayerHasQueens() {
                      [](const Player &p) { return p.getQueenCount() > 0; });
 }
 
-std::optional<Queen> Game::wakeQueen(int idx) {
-  auto queen = peekQueen(idx);
-  queens[idx].second = false;
-  return queen;
-}
-
 std::optional<Queen> Game::peekQueen(int idx) {
   if (queens[idx].second == false)
     return {};
   return queens[idx].first;
+}
+
+std::optional<Queen> Game::wakeQueen(int idx) {
+  auto queen = peekQueen(idx);
+  queens[idx].second = false;
+  return queen;
 }
 
 void Game::sleepyQueen(Queen q) {

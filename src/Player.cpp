@@ -26,7 +26,7 @@ std::string Player::printCards() const {
   for (int i = 0; i < cardSize; i++) {
     s.append(std::to_string(i));
     s.append(": ");
-    s.push_back(printCard(*it));
+    s.append(printFullCard(*it));
     s.push_back(' ');
     ++it;
   }

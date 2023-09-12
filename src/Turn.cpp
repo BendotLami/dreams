@@ -13,14 +13,15 @@ std::string CardMove::toString() {
 }
 
 std::string QueenMove::toString() {
+  // TODO: better string
   std::string res = "Queen ";
   res += queen.toString() + " index ";
   res += std::to_string(cardIdx) + " ";
   res += "From " +
-         (type == Type::KING ? "Deck" : "player" + std::to_string(playerIdx));
+         (type == Type::KING ? "Deck" : "Player" + std::to_string(playerIdx));
   res +=
       " was taken to: " +
-      (type == Type::POTION ? "Deck" : "player " + std::to_string(playerIdx));
+      (type == Type::POTION ? "Deck" : "Player " + std::to_string(playerIdx));
   res += '\n';
 
   return res;
