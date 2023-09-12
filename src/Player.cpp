@@ -50,13 +50,13 @@ Queen Player::removeQueen(int idx) {
   queens.erase(it);
   return tmp;
 }
-Card Player::peekCard(int idx) {
+Card Player::peekCard(int idx) const {
   auto it = cards.begin();
   std::advance(it, idx);
   return *it;
 }
 
-Queen Player::peekQueen(int idx) {
+Queen Player::peekQueen(int idx) const {
   auto it = queens.begin();
   std::advance(it, idx);
   return *it;
@@ -78,3 +78,8 @@ bool Player::hasWand() { return hasType<Wand>(); }
 bool Player::hasKnight() { return hasType<Knight>(); }
 bool Player::hasDragon() { return hasType<Dragon>(); }
 bool Player::hasKing() { return hasType<King>(); }
+
+bool anyPlayerHasQueens(const Players &players) {
+  return std::any_of(players.begin(), players.end(),
+                     [](const Player &p) { return p.getQueenCount() > 0; });
+}

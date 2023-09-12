@@ -40,3 +40,6 @@ std::string printFullCard(const Card &c);
 
 awaitable<Turn> playKing(const Players &players, const Queens &queens,
                          IOHandler &io_handler, int currentPlayer);
+
+awaitable<Turn> playKnight(const Players &players, const Queens &queens,
+                           IOHandler &io_handler, int currentPlayer);

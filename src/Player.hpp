@@ -32,8 +32,8 @@ public:
 
   Queen removeQueen(int idx);
 
-  Card peekCard(int idx);
-  Queen peekQueen(int idx);
+  Card peekCard(int idx) const;
+  Queen peekQueen(int idx) const;
 
   // For now, multiple cards is multiple calls
   Card playCard(int idx, Card nextCard);
@@ -67,3 +67,5 @@ private:
 };
 
 using Players = std::vector<Player>;
+
+bool anyPlayerHasQueens(const Players &players);

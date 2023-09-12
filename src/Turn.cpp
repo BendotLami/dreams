@@ -18,7 +18,7 @@ std::string QueenMove::toString() {
   res += queen.toString() + " index ";
   res += std::to_string(cardIdx) + " ";
   res += "From " +
-         (type == Type::KING ? "Deck" : "Player" + std::to_string(playerIdx));
+         (type == Type::KING ? "Deck" : "Player " + std::to_string(targetIdx));
   res +=
       " was taken to: " +
       (type == Type::POTION ? "Deck" : "Player " + std::to_string(playerIdx));
