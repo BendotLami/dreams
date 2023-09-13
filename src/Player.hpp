@@ -20,10 +20,13 @@ public:
 
   const std::list<Card> &getCards();
 
+  std::string simplePrintQueens() const;
   std::string printQueens() const;
 
   int getQueenCount() const;
 
+  std::string simplePrintCards() const;
+  std::string prettyPrintCards() const;
   std::string printCards() const;
 
   std::string toString() const;

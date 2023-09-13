@@ -27,7 +27,7 @@ awaitable<void> playGame(IOSocketHandler &io_handler, int num_players,
   while (true) {
     std::cout << "oh its on" << std::endl;
     co_await g.PlayTurn(i);
-    i = (i + 1) % 2;
+    i = (i + 1) % num_players;
   }
 }
 

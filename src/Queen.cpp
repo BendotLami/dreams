@@ -1,4 +1,5 @@
 #include "Queen.hpp"
+#include "CardPrinter.hpp"
 
 Queen::Queen(int points, Type type) : points(points), type(type) {}
 std::string Queen::toString() const {
@@ -25,7 +26,7 @@ Queens QueenFactory::getQueens() {
   return q;
 }
 
-Queen::Type Queen::getType() { return type; };
+Queen::Type Queen::getType() const { return type; };
 
 std::optional<Queen> peekQueen(const Queens &queens, int idx) {
   if (queens[idx].second == false)
@@ -33,7 +34,7 @@ std::optional<Queen> peekQueen(const Queens &queens, int idx) {
   return queens[idx].first;
 }
 
-std::string queensString(const Queens &queens, bool debug) {
+std::string simpleQueensString(const Queens &queens, bool debug) {
   std::string msg;
   int i = 0;
   for_each(queens.begin(), queens.end(), [&msg, &i, debug](GameQueen a) {
@@ -48,6 +49,33 @@ std::string queensString(const Queens &queens, bool debug) {
   return msg;
 }
 
+std::string prettyQueensString(const Queens &queens, bool debug) {
+  PrettyCards c;
+
+  for (const auto i : queens) {
+    if (i.second)
+      appendSleepyQueen(c);
+    else
+      appendEmptyCard(c);
+  }
+
+  return prettyToString(c);
+}
+
+std::string queensString(const Queens &queens, bool debug) {
+  return prettyQueensString(queens, debug);
+}
+
 std::string queensString(const Queens &queens) {
   return queensString(queens, false);
+}
+
+std::string playerQueensString(const std::list<Queen> queens) {
+  PrettyCards c;
+
+  for (const auto i : queens) {
+    appendQueen(c, i);
+  }
+
+  return prettyToString(c);
 }

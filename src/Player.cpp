@@ -1,8 +1,12 @@
 #include "Player.hpp"
+#include "CardPrinter.hpp"
+#include "Queen.hpp"
+#include "utils.hpp"
 
 Player::Player(std::list<Card> &&cards) : cards(cards){};
 const std::list<Card> &Player::getCards() { return cards; }
-std::string Player::printQueens() const {
+
+std::string Player::simplePrintQueens() const {
   std::string s;
   s.append("Queens: ");
   auto it = queens.begin();
@@ -16,9 +20,12 @@ std::string Player::printQueens() const {
   s.pop_back();
   return s;
 }
-int Player::getQueenCount() const { return queens.size(); }
-std::string Player::printCards() const {
 
+std::string Player::printQueens() const { return playerQueensString(queens); }
+
+int Player::getQueenCount() const { return queens.size(); }
+
+std::string Player::simplePrintCards() const {
   std::string s;
   s.append("Cards: ");
   auto it = cards.begin();
@@ -33,6 +40,28 @@ std::string Player::printCards() const {
   s.pop_back();
   return s;
 }
+
+std::string Player::prettyPrintCards() const {
+  PrettyCards c;
+  auto it = cards.begin();
+  for (int i = 0; i < cards.size(); i++) {
+    std::visit(
+        Overload{[&c](King card) { appendKingCard(c); },
+                 [&c](Dragon card) { appendDragonCard(c); },
+                 [&c](Wand card) { appendWandCard(c); },
+                 [&c](Knight card) { appendKnightCard(c); },
+                 [&c](Potion card) { appendPotionCard(c); },
+                 [&c](Number card) { appendNumberCard(c, card.getValue()); },
+                 [&c](Jester card) { appendJesterCard(c); },
+                 [&c](auto card) { return; }},
+        *it);
+    it++;
+  }
+  return prettyToString(c);
+}
+
+std::string Player::printCards() const { return prettyPrintCards(); }
+
 std::string Player::toString() const {
   std::string s;
   s.append(printCards());

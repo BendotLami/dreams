@@ -1,7 +1,7 @@
 CXX = g++-10
 CHAT_FLAGS = -std=c++20 -L -lboost_system -pthread -lboost_coroutine -fcoroutines
 
-DREAMS_SRCS = ./src/Cards.cpp ./src/Deck.cpp ./src/Game.cpp ./src/utils.cpp ./src/Player.cpp ./src/Queen.cpp dreams_server.cpp ./src/IOhandler.cpp ./src/Turn.cpp
+DREAMS_SRCS = ./src/Cards.cpp ./src/Deck.cpp ./src/Game.cpp ./src/utils.cpp ./src/Player.cpp ./src/Queen.cpp dreams_server.cpp ./src/IOhandler.cpp ./src/Turn.cpp ./src/CardPrinter.cpp
 DREAMS_FLAGS = --std=c++20 -g
 
 TARGET_EXEC := sdreams

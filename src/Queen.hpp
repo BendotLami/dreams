@@ -1,5 +1,6 @@
 #pragma once
 
+#include <list>
 #include <optional>
 #include <string>
 #include <vector>
@@ -17,7 +18,7 @@ public:
 
   std::string toString() const;
 
-  Type getType();
+  Type getType() const;
 
 private:
   int points;
@@ -34,5 +35,8 @@ public:
 
 std::optional<Queen> peekQueen(const Queens &queens, int idx);
 
+std::string simpleQueensString(const Queens &queens, bool debug);
+
 std::string queensString(const Queens &queens, bool debug);
 std::string queensString(const Queens &queens);
+std::string playerQueensString(const std::list<Queen> queens);

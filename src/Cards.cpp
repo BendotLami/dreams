@@ -1,6 +1,7 @@
 #include "Cards.hpp"
 #include "utils.hpp"
 #include <sstream>
+#include <string>
 #include <vector>
 
 static char toHex(char i) {
@@ -115,15 +116,21 @@ awaitable<Turn> playKnight(const Players &players, const Queens &queens,
 
   bool hasQueens = false;
   int attackedPlayerIdx;
+  for (int i = 0; i < players.size(); i++) {
+    if (players[i].getQueenCount() <= 0)
+      continue;
+    msg << "Player " << std::to_string(i) << '\n';
+    msg << players[i].printQueens();
+  }
+  msg << "Insert which player you want to attack: \n";
   while (!hasQueens) {
-    msg << "Insert which player you want to attack: \n";
     attackedPlayerIdx = co_await readInput(
         currentPlayer, msg.str(), io_handler, [&players, currentPlayer](int i) {
           return i >= 0 && i < players.size() && i != currentPlayer;
         });
     hasQueens = players[attackedPlayerIdx].getQueenCount() > 0;
     if (!hasQueens)
-      io_handler.write(currentPlayer, "Player does not have queens.");
+      io_handler.write(currentPlayer, "Player does not have queens.\n");
   }
   auto &attackedPlayer = players[attackedPlayerIdx];
 
@@ -152,8 +159,14 @@ awaitable<Turn> playPotion(const Players &players, const Queens &queens,
 
   bool hasQueens = false;
   int attackedPlayerIdx;
+  for (int i = 0; i < players.size(); i++) {
+    if (players[i].getQueenCount() <= 0)
+      continue;
+    msg << "Player " << std::to_string(i) << '\n';
+    msg << players[i].printQueens();
+  }
+  msg << "Insert which player you want to attack: \n";
   while (!hasQueens) {
-    msg << "Insert which player you want to attack: \n";
     attackedPlayerIdx = co_await readInput(
         currentPlayer, msg.str(), io_handler, [&players, currentPlayer](int i) {
           return i >= 0 && i < players.size() && i != currentPlayer;
